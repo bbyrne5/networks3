@@ -29,13 +29,12 @@ int main(int argc, char * argv[] )
   int port, s, len;
   socklen_t addr_len;
 
-  if (argc != 3) {
-    fprintf(stderr, "Usage: server port key\n");
+  if (argc != 2) {
+    fprintf(stderr, "Usage: ./myftpd port\n");
     exit(1);
   }
 
   port = atoi(argv[1]);
-  key = argv[2];
 
   // build address
   bzero((char *)&sin, sizeof(sin));
@@ -61,36 +60,12 @@ int main(int argc, char * argv[] )
       perror("Server Receive Error!\n");
       exit(1);
     }
+    printf("Received: %s\n", buf);
+
     bzero((char*)&buf, sizeof(buf));
 
-    if (sendto(s, key, strlen(key), 0, (struct sockaddr *)&client_addr, addr_len) == -1) {
-      perror("Server Send Error!\n");
-      exit(1);
-    }
-
-    if (recvfrom(s, buf, sizeof(buf), 0,  (struct sockaddr *)&client_addr, &addr_len)==-1){
-      perror("Server Receive Error!\n");
-      exit(1);
-    }
-
-    gettimeofday( &tv, NULL );
-    info = localtime( &tv.tv_sec );
-
-    sprintf(buf, "%s Timestamp: %02d:%02d:%02d.%d", buf, info->tm_hour, info->tm_min, info->tm_sec, (int)tv.tv_usec );
-    len = strlen(buf);
-   
-    int i;
-    // encrypt data
-    for(i = 0; i < len; i++)
-      buf[i] = buf[i] ^ key[i % strlen(key)];
-
-    // send encrypted message
-    if (sendto(s, buf, len, 0, (struct sockaddr *)&client_addr, addr_len) == -1) {
-      perror("Server Send Error!\n");
-      exit(1);
-    }
   }
-
+ 
   close(s);
 
   return 0;

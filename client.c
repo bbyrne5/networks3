@@ -17,6 +17,15 @@
 
 #define MAXDATASIZE 4096
 
+int download();
+int upload();
+int delete();
+int list();
+int makeDir();
+int removeDir();
+int changeDir();
+int quit();
+
 int main(int argc, char * argv[] )
 {
   FILE *fp = NULL;
@@ -24,26 +33,18 @@ int main(int argc, char * argv[] )
   struct sockaddr_in sin;
   struct timeval start, end;
   char *host;
-  char *data;
   char buf[MAXDATASIZE];
   char key[MAXDATASIZE];
   int port, s, key_len, data_len, i;
   socklen_t addr_len;
 
-  if (argc != 4) {
-    fprintf(stderr, "usage: client host port data\n");
+  if (argc != 3) {
+    fprintf(stderr, "usage: ./myftp host port\n");
     exit(1);
   }
 
   host = argv[1];
   port = atoi(argv[2]);
-  data = argv[3];
-  fp = fopen(data, "r");
-  if(!fp)
-    strcpy(buf,data);
-  else {
-    fread(buf, sizeof(char), MAXDATASIZE, fp);
-  }
 
   // translate host name into IP address
   hp = gethostbyname(host);
@@ -66,42 +67,58 @@ int main(int argc, char * argv[] )
 
   addr_len = sizeof(struct sockaddr);
 
-  // send initial message
-  if(sendto(s, "Hi", 3, 0, (struct sockaddr *)&sin, addr_len) == -1) {
-    perror("Client Send Error!\n");
-    exit(1);
+  while (1) {
+    fgets(buf, sizeof(buf), stdin);
+    buf[MAXDATASIZE-1] = '\0';
+
+    if (!strncmp(buf,"DWLD",4)) download();
+    else if (!strncmp(buf,"UPLD",4)) upload();
+    else if (!strncmp(buf,"DELF",4)) delete();
+    else if (!strncmp(buf,"LIST",4)) list();
+    else if (!strncmp(buf,"MDIR",4)) makeDir();
+    else if (!strncmp(buf,"RDIR",4)) removeDir();
+    else if (!strncmp(buf,"CDIR",4)) changeDir();
+    else if (!strncmp(buf,"QUIT",4)) {
+      quit();
+      break;
+    }
+    else
+      printf("Unrecognized command.\n");
   }
 
-  // receive key
-  if ((key_len = recvfrom(s, key, sizeof(key), 0, (struct sockaddr *)&sin, &addr_len)) == -1) {
-    perror("Client Receive Error!\n");
-    exit(1);
-  }
-
-  gettimeofday(&start, NULL);
-  // send data
-  if (sendto(s, buf, strlen(buf)+1, 0, (struct sockaddr *)&sin, addr_len) == -1) {
-    perror("Client Send Error!\n");
-    exit(1);
-  }
-
-  // receive data
-  if ((data_len = recvfrom(s, buf, sizeof(buf), 0, (struct sockaddr *)&sin, &addr_len)) == -1) {
-    perror("Client Receive Error!\n");
-    exit(1);
-  }
-  gettimeofday(&end, NULL);
-  buf[data_len] = '\0';
-
-  // decrypt data
-  for(i = 0; i < data_len; i++)
-    buf[i] = buf[i] ^ key[i % key_len];
-
-  // RTT time  
-  uint64_t delta_us = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
-  
-  printf("%s\nRTT: %lu microseconds\n", buf, delta_us);
   close(s);
 
+  return 0;
+}
+
+int download() {
+  return 0;
+}
+
+int upload() {
+  return 0;
+}
+
+int delete() {
+  return 0;
+}
+
+int list() {
+  return 0;
+}
+
+int makeDir() {
+  return 0;
+}
+
+int removeDir() {
+  return 0;
+}
+
+int changeDir() {
+  return 0;
+}
+
+int quit() {
   return 0;
 }
