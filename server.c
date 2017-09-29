@@ -1,9 +1,7 @@
 /*
- * server.c
- * David Mellitt dmellitt
- * Simple UDP server that sends an encryption key, receive a message,
- * append a timestamp to the message, encrypt the message, and send
- * it back to the client
+ * server.cpp
+ * Brian Byrne bbyrne5, David Mellitt dmellitt
+ * TCP server that implements FTP
 */
 
 #include <stdio.h>
@@ -24,6 +22,7 @@ int main(int argc, char * argv[] )
   struct sockaddr_in sin, client_addr;
   struct timeval tv;
   struct tm *info;
+  int rqst;
   char *key;
   char buf[MAXDATASIZE];
   int port, s, len;
@@ -55,43 +54,20 @@ int main(int argc, char * argv[] )
   }
 
   addr_len = sizeof(client_addr);
-
+  
+  if (listen(s, 5) < 0) {
+    perror("listen failed");
+    exit(1);
+  }
+  
   while (1){
-    if (recvfrom(s, buf, sizeof(buf), 0,  (struct sockaddr *)&client_addr, &addr_len)==-1){
-      perror("Server Receive Error!\n");
-      exit(1);
-    }
-    bzero((char*)&buf, sizeof(buf));
-
-    if (sendto(s, key, strlen(key), 0, (struct sockaddr *)&client_addr, addr_len) == -1) {
-      perror("Server Send Error!\n");
-      exit(1);
-    }
-
-    if (recvfrom(s, buf, sizeof(buf), 0,  (struct sockaddr *)&client_addr, &addr_len)==-1){
-      perror("Server Receive Error!\n");
-      exit(1);
-    }
-
-    gettimeofday( &tv, NULL );
-    info = localtime( &tv.tv_sec );
-
-    sprintf(buf, "%s Timestamp: %02d:%02d:%02d.%d", buf, info->tm_hour, info->tm_min, info->tm_sec, (int)tv.tv_usec );
-    len = strlen(buf);
-   
-    int i;
-    // encrypt data
-    for(i = 0; i < len; i++)
-      buf[i] = buf[i] ^ key[i % strlen(key)];
-
-    // send encrypted message
-    if (sendto(s, buf, len, 0, (struct sockaddr *)&client_addr, addr_len) == -1) {
-      perror("Server Send Error!\n");
-      exit(1);
+    while ((rqst = accept(s, (struct sockaddr *)&client_addr, &addr_len)) < 0){
+        perror("accept failed");
+        exit(1);
     }
   }
 
-  close(s);
+  shutdown(s, SHUT_RDWR);
 
   return 0;
 }

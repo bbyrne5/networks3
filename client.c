@@ -1,9 +1,7 @@
 /*
  * client.c
- * David Mellitt dmellitt
- * Simple UDP client that contacts a server, recieves a key,
- * sends a message, decrypts a message from the server, and
- * prints the round trip time
+ * Brian Byrne bbyrne5, David Mellitt dmellitt
+ * TCP client implementing FTP
 */
 
 #include <stdio.h>
@@ -65,43 +63,13 @@ int main(int argc, char * argv[] )
   }
 
   addr_len = sizeof(struct sockaddr);
-
-  // send initial message
-  if(sendto(s, "Hi", 3, 0, (struct sockaddr *)&sin, addr_len) == -1) {
-    perror("Client Send Error!\n");
-    exit(1);
-  }
-
-  // receive key
-  if ((key_len = recvfrom(s, key, sizeof(key), 0, (struct sockaddr *)&sin, &addr_len)) == -1) {
-    perror("Client Receive Error!\n");
-    exit(1);
-  }
-
-  gettimeofday(&start, NULL);
-  // send data
-  if (sendto(s, buf, strlen(buf)+1, 0, (struct sockaddr *)&sin, addr_len) == -1) {
-    perror("Client Send Error!\n");
-    exit(1);
-  }
-
-  // receive data
-  if ((data_len = recvfrom(s, buf, sizeof(buf), 0, (struct sockaddr *)&sin, &addr_len)) == -1) {
-    perror("Client Receive Error!\n");
-    exit(1);
-  }
-  gettimeofday(&end, NULL);
-  buf[data_len] = '\0';
-
-  // decrypt data
-  for(i = 0; i < data_len; i++)
-    buf[i] = buf[i] ^ key[i % key_len];
-
-  // RTT time  
-  uint64_t delta_us = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
   
-  printf("%s\nRTT: %lu microseconds\n", buf, delta_us);
-  close(s);
+  if (connect(s, (struct sockaddr *)&sin, sizeof(sin)) < 0){
+    perror("connect failed");
+    exit(1);
+  }
+  
+  shutdown(s, SHUT_RDWR);
 
   return 0;
 }
