@@ -1,9 +1,7 @@
 /*
  * client.c
- * David Mellitt dmellitt
- * Simple UDP client that contacts a server, recieves a key,
- * sends a message, decrypts a message from the server, and
- * prints the round trip time
+ * Brian Byrne bbyrne5, David Mellitt dmellitt
+ * TCP client implementing FTP
 */
 
 #include <stdio.h>
@@ -60,13 +58,18 @@ int main(int argc, char * argv[] )
   sin.sin_port = htons(port);
 
   // active open
-  if ((s=socket(PF_INET, SOCK_DGRAM, 0)) < 0) {
+  if ((s=socket(PF_INET, SOCK_STREAM, 0)) < 0) {
     perror("client: socket");
     exit(1);
   }
 
   addr_len = sizeof(struct sockaddr);
 
+  if (connect(s, (struct sockaddr *)&sin, sizeof(sin)) < 0){
+    perror("connect failed");
+    exit(1);
+  }
+  
   while (1) {
     fgets(buf, sizeof(buf), stdin);
     buf[MAXDATASIZE-1] = '\0';
@@ -86,7 +89,7 @@ int main(int argc, char * argv[] )
       printf("Unrecognized command.\n");
   }
 
-  close(s);
+  shutdown(s, SHUT_RDWR);
 
   return 0;
 }
