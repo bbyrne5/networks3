@@ -16,7 +16,7 @@
 #include <sys/time.h>
 #include <time.h>
 
-#define MAXDATASIZE 4200
+#define MAXDATASIZE 4096
 #define SMALLSIZE 256
 
 
@@ -32,12 +32,9 @@ int quit();
 int main(int argc, char * argv[] )
 {
   struct sockaddr_in sin, client_addr;
-  struct timeval tv;
-  struct tm *info;
   int rqst;
-  char *key;
   char buf[MAXDATASIZE];
-  int port, s, len;
+  int port, s;
   socklen_t addr_len;
 
   if (argc != 2) {
@@ -64,6 +61,7 @@ int main(int argc, char * argv[] )
 
   if ((bind(s, (struct sockaddr *)&sin, sizeof(sin))) < 0) {
     perror("Server Bind Error!\n");
+    shutdown(s, SHUT_RDWR);
     exit(1);
   }
 
@@ -71,55 +69,82 @@ int main(int argc, char * argv[] )
   
   if (listen(s, 5) < 0) {
     perror("listen failed");
+    close(s);
     exit(1);
   }
-  
+ 
+  int retv; 
   while (1){
-    int valread;
-    while ((rqst = accept(s, (struct sockaddr *)&client_addr, &addr_len)) < 0){
-        perror("accept failed");
+    if ((rqst = accept(s, (struct sockaddr *)&client_addr, &addr_len)) < 0){
+        perror("server: accept failed");
+        close(s);
         exit(1);
     }
-    valread = read(rqst, buf, MAXDATASIZE);
-    if (!strncmp(buf,"DWLD",4)) download(rqst);
-    else if (!strncmp(buf,"UPLD",4)) upload(rqst);
-    else if (!strncmp(buf,"DELF",4)) delete(rqst);
-    else if (!strncmp(buf,"LIST",4)) list(rqst);
-    else if (!strncmp(buf,"MDIR",4)) makeDir(rqst);
-    else if (!strncmp(buf,"RDIR",4)) removeDir(rqst);
-    else if (!strncmp(buf,"CDIR",4)) changeDir(rqst);
-    else if (!strncmp(buf,"QUIT",4)) {
-      quit();
-      break;
-    }
-    else
-      printf("Unrecognized command.\n");
-  }
 
-  shutdown(s, SHUT_RDWR);
+    while(1) {
+      bzero((char*)&buf, sizeof(buf));
+
+      while(buf[0]== '\0') {
+        if(read(rqst, buf, SMALLSIZE) == -1) {
+          perror("server: receive failed");
+          close(s);
+          exit(1);
+        }
+      }
+
+      if (!strncmp(buf,"DWLD",4)) retv = download(rqst);
+      else if (!strncmp(buf,"UPLD",4)) retv = upload(rqst);
+      else if (!strncmp(buf,"DELF",4)) retv = delete(rqst);
+      else if (!strncmp(buf,"LIST",4)) retv = list(rqst);
+      else if (!strncmp(buf,"MDIR",4)) retv = makeDir(rqst);
+      else if (!strncmp(buf,"RDIR",4)) retv = removeDir(rqst);
+      else if (!strncmp(buf,"CDIR",4)) retv = changeDir(rqst);
+      else if (!strncmp(buf,"QUIT",4)) break;
+      else
+        printf("Unrecognized command %s.\n", buf);
+    }
+  }
 
   return 0;
 }
 
 int download(int rqst) {
   //get name length
-  char sizeBuf[256];
-  int valread = read(rqst, sizeBuf, SMALLSIZE);
-  sizeBuf[valread] = 0;
-  int size = atoi(sizeBuf);
+  short nameLength = 0;
+  long fileLength = 0;
+  if(read(rqst, &nameLength, sizeof(nameLength)) == -1) {
+    perror("server: read error");
+    return 1;
+  }
+  nameLength = ntohs(nameLength);
 
   //get the name
-  char fileName[size+1];
-  valread = read(rqst, fileName, size);
-  fileName[valread] = 0;
+  char fileName[nameLength+1];
+  if(read(rqst, fileName, nameLength) == -1) {
+    perror("server: read error");
+    return 1;
+  }
+  fileName[nameLength] = '\0';
 
+  FILE * fp;
   //check for file
   if(access(fileName, F_OK) != -1){//file does exist
-
+    fp = fopen(fileName, "r");
+    fseek(fp, 0, SEEK_END);
+    fileLength = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
   }
   else {//file does not exist
-    printf("File does not exist");
+    fileLength = -1;
   }
+
+  // send length
+  if (send(rqst, &fileLength, sizeof(fileLength), 0) == -1 ) {
+    perror("server: send error");
+    return 1;
+  }
+
+  // send file
   
   return 0;
 }
