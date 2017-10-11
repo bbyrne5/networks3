@@ -147,6 +147,8 @@ int download(int rqst) {
     perror("server: send error");
     return 1;
   }
+  
+  printf("%lu\n", fileLength);
 
   if(fileLength < 0){
     return 0;
