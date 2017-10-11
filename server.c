@@ -148,6 +148,10 @@ int download(int rqst) {
     return 1;
   }
 
+  if(fileLength < 0){
+    return 0;
+  }
+
   // send file
   char buf[MAXDATASIZE];
   int bytes;
