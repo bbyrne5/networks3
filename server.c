@@ -158,6 +158,7 @@ int download(int rqst) {
   char buf[MAXDATASIZE];
   int bytes;
   while((bytes = fread(buf, sizeof(char), MAXDATASIZE, fp)) > 0){
+    printf("%s", buf);
     if(send(rqst, buf, bytes, 0) < 0){
       perror("server: send error");
       return 1;
