@@ -142,13 +142,14 @@ int download(int rqst) {
     fileLength = -1;
   }
 
+  printf("%lu\n", fileLength);
+  
+  long convertedLength = htonl(fileLength); 
   // send length
-  if (send(rqst, &fileLength, sizeof(fileLength), 0) < 0 ) {
+  if (send(rqst, &convertedLength, sizeof(convertedLength), 0) < 0 ) {
     perror("server: send error");
     return 1;
   }
-  
-  printf("%lu\n", fileLength);
 
   if(fileLength < 0){
     return 0;
