@@ -19,7 +19,6 @@
 #define MAXDATASIZE 4096
 #define SMALLSIZE 256
 
-
 int download(int);
 int upload(int);
 int delete(int);
@@ -101,6 +100,11 @@ int main(int argc, char * argv[] )
       else if (!strncmp(buf,"QUIT",4)) break;
       else
         printf("Unrecognized command %s.\n", buf);
+
+      if (retv == 1){
+        printf("error caused: closing connection\n");
+        break;
+      }
     }
     close(rqst);
   }
@@ -139,13 +143,20 @@ int download(int rqst) {
   }
 
   // send length
-  if (send(rqst, &fileLength, sizeof(fileLength), 0) == -1 ) {
+  if (send(rqst, &fileLength, sizeof(fileLength), 0) < 0 ) {
     perror("server: send error");
     return 1;
   }
 
   // send file
-  
+  char buf[MAXDATASIZE];
+  int bytes;
+  while((bytes = fread(buf, sizeof(char), MAXDATASIZE, fp)) > 0){
+    if(send(rqst, buf, bytes, 0) < 0){
+      perror("server: send error");
+      return 1;
+    } 
+  }
   return 0;
 }
 
