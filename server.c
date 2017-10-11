@@ -27,7 +27,6 @@ int list(int);
 int makeDir(int);
 int removeDir(int);
 int changeDir(int);
-int quit();
 
 int main(int argc, char * argv[] )
 {
@@ -103,6 +102,7 @@ int main(int argc, char * argv[] )
       else
         printf("Unrecognized command %s.\n", buf);
     }
+    close(rqst);
   }
 
   return 0;
@@ -255,9 +255,30 @@ int removeDir(int rqst) {
 }
 
 int changeDir(int rqst) {
+  //get name length
+  int32_t size;
+  int valread = read(rqst, &size, sizeof(size));
+
+  //get the name
+  char dirName[size+1];
+  valread = read(rqst, dirName, size);
+  dirName[valread] = 0;
+  
+  struct stat st = {0};
+  //check if dir exists and create it if not
+  int success = 1;
+  int failure = -1;
+  int extraFailure = -2;
+  if (stat(dirName, &st) == -1){
+    send(rqst, &extraFailure, sizeof(extraFailure), 0);
+  }
+  else {
+    int change = chdir(dirName);
+    if (change > 0)
+      send(rqst, &success, sizeof(success), 0); 
+    else 
+      send(rqst, &failure, sizeof(failure), 0);
+  }
   return 0;
 }
 
-int quit(int rqst) {
-  return 0;
-}
