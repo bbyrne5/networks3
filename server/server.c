@@ -87,7 +87,7 @@ int main(int argc, char * argv[] )
       while(buf[0]== '\0') {
         if(read(rqst, buf, SMALLSIZE) == -1) {
           perror("server: receive failed");
-          close(s);
+          close(rqst);
           exit(1);
         }
       }

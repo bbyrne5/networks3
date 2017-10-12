@@ -233,7 +233,7 @@ int download(int s, char * buf) {
   elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
   elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;   // us to ms
   //throughput
-  printf("%d bytes transferred in %fms.\n", fileLen, elapsedTime);
+  printf("%d bytes transferred in %f ms: %f Megabytes/sec\n", fileLen, elapsedTime, fileLen/elapsedTime/1000);
 
   fclose(fp);
   return 0;
@@ -298,7 +298,7 @@ int upload(int s, char * buf) {
   elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
   elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;   // us to ms
   //throughput
-  printf("%d bytes transferred in %fms.\n", fileLength, elapsedTime);
+  printf("%d bytes transferred in %f ms: %f Megabytes/sec\n", fileLength, elapsedTime, fileLength/elapsedTime/1000);
 
   fclose(fp);
   return 0;
@@ -334,11 +334,13 @@ int list(int s, char * buf) {
   }
   size = ntohl(size);
 
-  if (recv(s, buf, size, 0) < 0) {
+  long len;
+  if ((len = read(s, buf, size)) < 0) {
     perror("client: receive error");
     return 1;
   }
 
+  buf[len] = '\0';
   printf("%s", buf);
 
   return 0;
