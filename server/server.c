@@ -20,6 +20,7 @@
 #define MAXDATASIZE 4096
 #define SMALLSIZE 256
 
+short nameLen(int);
 int download(int);
 int upload(int);
 int delete(int);
@@ -113,15 +114,22 @@ int main(int argc, char * argv[] )
   return 0;
 }
 
-int download(int rqst) {
+short nameLen(int rqst) {
   //get name length
   short nameLength = 0;
-  long fileLength = 0;
   if(read(rqst, &nameLength, sizeof(nameLength)) == -1) {
     perror("server: read error");
-    return 1;
+    return -1;
   }
-  nameLength = ntohs(nameLength);
+  return ntohs(nameLength);
+}
+
+
+int download(int rqst) {
+
+  short nameLength;
+  if((nameLength = nameLen(rqst)) < 0)
+    return 1;
 
   //get the name
   char fileName[nameLength+1];
@@ -131,6 +139,7 @@ int download(int rqst) {
   }
   fileName[nameLength] = '\0';
 
+  uint32_t fileLength = 0;
   FILE * fp;
   //check for file
   if(access(fileName, F_OK) != -1){//file does exist
@@ -143,14 +152,14 @@ int download(int rqst) {
     fileLength = -1;
   }
 
-  long convertedLength = htonl(fileLength); 
+  uint32_t convertedLength = htonl(fileLength); 
   // send length
   if (send(rqst, &convertedLength, sizeof(convertedLength), 0) < 0 ) {
     perror("server: send error");
     return 1;
   }
 
-  if(fileLength < 0){
+  if(fileLength == -1){
     return 0;
   }
 
@@ -169,47 +178,42 @@ int download(int rqst) {
 }
 
 int upload(int rqst) {
-  //get name length
-  short nameLength = 0;
-  long fileLength = 0;
-  if(read(rqst, &nameLength, sizeof(nameLength)) < 0) {
-    perror("server: read error");
+  short nameLength;
+  if((nameLength = nameLen(rqst)) < 0)
     return 1;
-  }
-  nameLength = ntohs(nameLength);
 
   //get the name
   char fileName[nameLength+1];
-  if(read(rqst, fileName, nameLength) < 0) {
+  if(read(rqst, fileName, nameLength) == -1) {
     perror("server: read error");
     return 1;
   }
   fileName[nameLength] = '\0';
   
   if(send(rqst, "READY", 6, 0) < 0){
-    perror("server: receive error");
+    perror("server: send error");
     return 1;
   }
   
-  long receiveNum = 0;
-  while(!receiveNum) {
-    if (read(rqst, &receiveNum, sizeof(receiveNum)) == -1) {
+  uint32_t len = 0;
+  while(!len) {
+    if (read(rqst, &len, sizeof(len)) == -1) {
       perror("server: receive error");
       return 1;
     }
   }
+  len = ntohl(len);
 
-  long fileLen = ntohl(receiveNum);
   FILE * fp = fopen(basename(fileName), "w+");
   int i;
   char buf[MAXDATASIZE];
-  for(i = 0; i < fileLen; i += MAXDATASIZE){
+  for(i = 0; i < len; i += MAXDATASIZE){
     if (read(rqst, buf, MAXDATASIZE) < 0) {
       perror("server: receive error");
       return 1;
     }
-    if (fileLen - i < MAXDATASIZE)
-      fwrite(buf, sizeof(char), fileLen-i, fp);
+    if (len - i < MAXDATASIZE)
+      fwrite(buf, sizeof(char), len-i, fp);
     else
       fwrite(buf, sizeof(char), MAXDATASIZE, fp);
   }
@@ -223,22 +227,18 @@ int delete(int rqst) {
   char buf[256];
   buf[0] = '\0';
 
-  //get name length
-  short size = 0;
-  while(!size)
-    if (read(rqst, &size, sizeof(size)) < 0)
-      return 1;
+  short nameLength;
+  if((nameLength = nameLen(rqst)) < 0)
+    return 1;
 
-  size = ntohs(size);
-  
   //get the name
-  char dirName[size+1];
-  dirName[0] = '\0';
+  char dirName[nameLength+1];
+  if(read(rqst, dirName, nameLength) == -1) {
+    perror("server: read error");
+    return 1;
+  }
+  dirName[nameLength] = '\0';
   
-  while(dirName[0] == '\0')
-    if(read(rqst, dirName, size) < 0)
-      return 1;
-
   //check for file
   int success = 1;
   int failure = -1;
@@ -284,20 +284,24 @@ int list(int rqst) {
 }
 
 int makeDir(int rqst) {
-  //get name length
-  int size;
-  int valread = read(rqst, &size, sizeof(size));
+  short nameLength;
+  if((nameLength = nameLen(rqst)) < 0)
+    return 1;
 
   //get the name
-  char dirName[size+1];
-  valread = read(rqst, dirName, size);
-  dirName[valread] = 0;
-
+  char dirName[nameLength+1];
+  if(read(rqst, dirName, nameLength) == -1) {
+    perror("server: read error");
+    return 1;
+  }
+  dirName[nameLength] = '\0';
+  
   struct stat st = {0};
   //check if dir exists and create it if not
-  int success = 1;
-  int failure = -1;
-  int extraFailure = -2;
+  int success = htonl(1);
+  int failure = htonl(-1);
+
+  int extraFailure = htonl(-2);
   if (stat(dirName, &st) == -1){
     int create = mkdir(dirName, 0700);
     if (create > 0)
@@ -313,14 +317,17 @@ int makeDir(int rqst) {
 }
 
 int removeDir(int rqst) {
-  //get name length
-  int32_t size;
-  int valread = read(rqst, &size, sizeof(size));
+  short nameLength;
+  if((nameLength = nameLen(rqst)) < 0)
+    return 1;
 
   //get the name
-  char dirName[size+1];
-  valread = read(rqst, dirName, size);
-  dirName[valread] = 0;
+  char dirName[nameLength+1];
+  if(read(rqst, dirName, nameLength) == -1) {
+    perror("server: read error");
+    return 1;
+  }
+  dirName[nameLength] = '\0';
 
   struct stat st = {0};
   //check if dir exists and create it if not
@@ -342,14 +349,17 @@ int removeDir(int rqst) {
 }
 
 int changeDir(int rqst) {
-  //get name length
-  int32_t size;
-  int valread = read(rqst, &size, sizeof(size));
+  short nameLength;
+  if((nameLength = nameLen(rqst)) < 0)
+    return 1;
 
   //get the name
-  char dirName[size+1];
-  valread = read(rqst, dirName, size);
-  dirName[valread] = 0;
+  char dirName[nameLength+1];
+  if(read(rqst, dirName, nameLength) == -1) {
+    perror("server: read error");
+    return 1;
+  }
+  dirName[nameLength] = '\0';
   
   struct stat st = {0};
   //check if dir exists and create it if not

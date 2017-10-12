@@ -191,12 +191,12 @@ int download(int s, char * buf) {
   if(lengthAndName(s, buf) == 1)
     return 1;
 
-  long receiveNum = 0;
-  if (read(s, &receiveNum, sizeof(receiveNum)) == -1) {
+  uint32_t fileLen = 0;
+  if (read(s, &fileLen, sizeof(fileLen)) == -1) {
     perror("client: receive error");
     return 1;
   }
-  long fileLen = ntohl(receiveNum);
+  fileLen = ntohl(fileLen);
 
   if (fileLen == -1) {
     printf("File %s does not exist on server\n", buf);
@@ -228,7 +228,7 @@ int download(int s, char * buf) {
   elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
   elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;   // us to ms
   //throughput
-  printf("%lu bytes transferred in %fms.\n", fileLen*8, elapsedTime);
+  printf("%d bytes transferred in %fms.\n", fileLen*8, elapsedTime);
 
   fclose(fp);
   return 0;
@@ -245,8 +245,6 @@ int upload(int s, char * buf) {
 
   buf[strlen(buf)-1] = '\0';
 
-  FILE * fp;
-  long fileLength;
   if(access(buf, F_OK) == -1){//file doesn't exist
     printf("File %s does not exist on client\n", buf);
     return 0;
@@ -254,6 +252,9 @@ int upload(int s, char * buf) {
 
   if(lengthAndName(s, buf) == 1)
     return 1;
+
+  FILE * fp;
+  uint32_t fileLength;
 
   fp = fopen(buf, "r");
   fseek(fp, 0, SEEK_END);
@@ -267,7 +268,7 @@ int upload(int s, char * buf) {
     return 1;
   }
 
-  long convertedLength = htonl(fileLength);
+  uint32_t convertedLength = htonl(fileLength);
   // send length
   if (send(s, &convertedLength, sizeof(convertedLength), 0) < 0 ) {
     perror("client: send error");
@@ -292,7 +293,7 @@ int upload(int s, char * buf) {
   elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
   elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;   // us to ms
   //throughput
-  printf("%lu bytes transferred in %fms.\n", fileLength*8, elapsedTime);
+  printf("%d bytes transferred in %fms.\n", fileLength*8, elapsedTime);
 
   fclose(fp);
   return 0;
@@ -321,19 +322,19 @@ int list(int s, char * buf) {
     return 1;
   }
 
-  long receiveNum = 0;
-  if (recv(s, &receiveNum, sizeof(receiveNum), 0) < 0) {
+  uint32_t size = 0;
+  if (recv(s, &size, sizeof(size), 0) < 0) {
     perror("client: receive error");
     return 1;
   }
-  int size = ntohl(receiveNum);
+  size = ntohl(size);
 
   if (recv(s, buf, size, 0) < 0) {
     perror("client: receive error");
     return 1;
   }
 
-  printf("%s\n", buf);
+  printf("%s", buf);
 
   return 0;
 }
@@ -351,13 +352,13 @@ int makeDir(int s, char * buf) {
   if(lengthAndName(s, buf) == 1)
     return 1;
 
-  short receiveNum = 0;
+  uint32_t receiveNum = 0;
   if (recv(s, &receiveNum, sizeof(receiveNum), 0) < 0) {
     perror("client: receive error");
     return 1;
   }
 
-  receiveNum = ntohs(receiveNum);
+  receiveNum = ntohl(receiveNum);
   if (receiveNum == -2)
     printf("The directory already exists on server\n");
   else if (receiveNum == -1)
