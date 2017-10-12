@@ -204,9 +204,11 @@ int upload(int rqst) {
   }
   len = ntohl(len);
 
+  // open/create file
   FILE * fp = fopen(basename(fileName), "w+");
   int i;
   char buf[MAXDATASIZE];
+  // read file
   for(i = 0; i < len; i += MAXDATASIZE){
     if (read(rqst, buf, MAXDATASIZE) < 0) {
       perror("server: receive error");
@@ -224,7 +226,7 @@ int upload(int rqst) {
 
 int delete(int rqst) {
 
-  char buf[256];
+  char buf[SMALLSIZE];
   buf[0] = '\0';
 
   short nameLength;
@@ -240,33 +242,57 @@ int delete(int rqst) {
   dirName[nameLength] = '\0';
   
   //check for file
-  int success = 1;
-  int failure = -1;
+  short success = htons(1);
+  short failure = htons(-1);
   if(access(dirName, F_OK) != -1){//file does exist
-    send(rqst, &success, sizeof(success), 0);
-  
-    while(buf[0] == '\0')
-      read(rqst, buf, SMALLSIZE);
-
-    if(strncmp(buf, "Yes", 3) == 0){
-      unlink(dirName);
+    if(send(rqst, &success, sizeof(success), 0) < 0) {
+      perror("server: send error");
+      return 1;
     }
-    else
-      return 0;
   }
-  else {//file does not exist
-    send(rqst, &failure, sizeof(failure), 0);
-    printf("File does not exist\n");
+  else { // doesn't exist
+    if(send(rqst, &failure, sizeof(failure), 0) < 0) {
+      perror("server: send error");
+      return 1;
+    }
+
+    return 0;
+  }
+  
+  // get Yes or No
+  while(buf[0] == '\0')
+    if(read(rqst, buf, SMALLSIZE) < 0) {
+      perror("server: read error");
+      return 1;
+    }
+
+  if(strncmp(buf, "Yes", 3) == 0){
+    // delete
+    int result = unlink(dirName);
+    if(result == 0) {
+      if(send(rqst, &success, sizeof(success), 0) < 0) {
+        perror("server: send error");
+        return 1;
+      }
+    }
+    else {
+      if(send(rqst, &failure, sizeof(failure), 0) < 0) {
+        perror("server: send error");
+        return 1;
+      }
+    }
   }
 
   return 0;
 }
 
 int list(int rqst) {
+  // list contents
   FILE* p = popen("ls -la", "r");
   if (!p) return 1;
   char buff[MAXDATASIZE];
   buff[0] = '\0';
+  // put listing in buffer
   while (fgets(buff+strlen(buff), sizeof(buff), p)) {
   }
   pclose(p);
@@ -317,6 +343,9 @@ int makeDir(int rqst) {
 }
 
 int removeDir(int rqst) {
+  char buf[SMALLSIZE];
+  buf[0] = '\0';
+
   short nameLength;
   if((nameLength = nameLen(rqst)) < 0)
     return 1;
@@ -330,20 +359,47 @@ int removeDir(int rqst) {
   dirName[nameLength] = '\0';
 
   struct stat st = {0};
-  //check if dir exists and create it if not
+  //check for file
   short success = htons(1);
   short failure = htons(-1);
-  short extraFailure = htons(-2);
-  if (stat(dirName, &st) == -1){
-    send(rqst, &extraFailure, sizeof(extraFailure), 0);
-  } 
+  if (stat(dirName, &st) == 0 && S_ISDIR(st.st_mode)) {
+    if(send(rqst, &success, sizeof(success), 0) < 0) {
+      perror("server: send error");
+      return 1;
+    }
+  }
   else {
-    int create = mkdir(dirName, 0700);
-    if (create == 0)
-      send(rqst, &success, sizeof(success), 0); 
-    else 
-      send(rqst, &failure, sizeof(failure), 0);
-  } 
+    if(send(rqst, &failure, sizeof(failure), 0) < 0) {
+      perror("server: send error");
+      return 1;
+    }
+
+    return 0;
+  }
+ 
+  // get Yes or No 
+  while(buf[0] == '\0')
+    if(read(rqst, buf, SMALLSIZE) < 0) {
+      perror("server: read error");
+      return 1;
+    }
+
+  if(strncmp(buf, "Yes", 3) == 0){
+    // remove if empty
+    int result = rmdir(dirName);
+    if(result == 0) {
+      if(send(rqst, &success, sizeof(success), 0) < 0) {
+        perror("server: send error");
+        return 1;
+      }
+    }
+    else {
+      if(send(rqst, &failure, sizeof(failure), 0) < 0) {
+        perror("server: send error");
+        return 1;
+      }
+    }
+  }
 
   return 0;
 }
@@ -360,22 +416,34 @@ int changeDir(int rqst) {
     return 1;
   }
   dirName[nameLength] = '\0';
-  
+
   struct stat st = {0};
-  //check if dir exists and create it if not
-  int success = 1;
-  int failure = -1;
-  int extraFailure = -2;
-  if (stat(dirName, &st) == -1){
-    send(rqst, &extraFailure, sizeof(extraFailure), 0);
+  //check for file
+  short success = htons(1);
+  short failure = htons(-1);
+  short failTwo = htons(-2);
+  if (stat(dirName, &st) != 0 || !S_ISDIR(st.st_mode)) {
+    if(send(rqst, &failTwo, sizeof(failTwo), 0) < 0) {
+      perror("server: send error");
+      return 1;
+    }
+  }
+
+  // attempt to change directory
+  int result = chdir(dirName);
+  if(result == 0) {
+    if(send(rqst, &success, sizeof(success), 0) < 0) {
+      perror("server: send error");
+      return 1;
+    }
   }
   else {
-    int change = chdir(dirName);
-    if (change > 0)
-      send(rqst, &success, sizeof(success), 0); 
-    else 
-      send(rqst, &failure, sizeof(failure), 0);
+    if(send(rqst, &failure, sizeof(failure), 0) < 0) {
+      perror("server: send error");
+      return 1;
+    }
   }
+
   return 0;
 }
 

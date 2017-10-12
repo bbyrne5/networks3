@@ -112,6 +112,7 @@ int delete(int s, char * name, char * type) {
     return 0;
   }
 
+  // ask user for confirm
   char * answer = yesOrNo(name);
 
   if (send(s, answer, strlen(answer)+1, 0) == -1) {
@@ -142,6 +143,7 @@ char * yesOrNo(char * name) {
 
   char buf[5];
 
+  // loop until receive Yes or No
   while (1) {
     printf("Are you sure you want to delete %s? (Yes\\No)\n", name);
     fgets (buf, 5, stdin);
@@ -211,6 +213,7 @@ int download(int s, char * buf) {
    
   int i;
   gettimeofday(&t1, NULL);
+  // read file
   for(i = 0; i < fileLen; i += MAXDATASIZE){
     if (read(s, buf, MAXDATASIZE) == -1) {
       perror("client: receive error");
