@@ -13,6 +13,7 @@
 #include <netdb.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <libgen.h>
 
 #define MAXDATASIZE 4096
 #define SMALLSIZE 256
@@ -152,8 +153,6 @@ char * yesOrNo(char * name) {
 }
 
 int lengthAndName(int s, char * buf) {
-  fgets(buf, SMALLSIZE, stdin);
-  buf[SMALLSIZE-1] = '\0';
 
   short len = strlen(buf);
 
@@ -186,6 +185,8 @@ int download(int s, char * buf) {
   }
 
   printf("File name: ");
+  fgets(buf, SMALLSIZE, stdin);
+  buf[SMALLSIZE-1] = '\0';
 
   if(lengthAndName(s, buf) == 1)
     return 1;
@@ -196,14 +197,13 @@ int download(int s, char * buf) {
     return 1;
   }
   long fileLen = ntohl(receiveNum);
-  printf("%d\n", fileLen);
 
   if (fileLen == -1) {
     printf("File %s does not exist on server\n", buf);
     return 0;
   }
 
-  FILE * fp = fopen(buf, "w+");
+  FILE * fp = fopen(basename(buf), "w+");
 
   int i;
   for(i = 0; i < fileLen; i += MAXDATASIZE){
@@ -211,8 +211,6 @@ int download(int s, char * buf) {
       perror("client: receive error");
       return 1;
     }
-    printf("%s\n", buf);
-    printf("%d\n", fileLen-i);
     if (fileLen - i < MAXDATASIZE)
       fwrite(buf, sizeof(char), fileLen-i, fp);
     else
@@ -230,10 +228,48 @@ int upload(int s, char * buf) {
   }
 
   printf("File name: ");
+  fgets(buf, SMALLSIZE, stdin);
+
+  buf[strlen(buf)-1] = '\0';
+
+  FILE * fp;
+  long fileLength;
+  if(access(buf, F_OK) == -1){//file doesn't exist
+    printf("File %s does not exist on client\n", buf);
+    return 0;
+  }
 
   if(lengthAndName(s, buf) == 1)
     return 1;
 
+  fp = fopen(buf, "r");
+  fseek(fp, 0, SEEK_END);
+  fileLength = ftell(fp);
+  fseek(fp, 0, SEEK_SET);
+
+  char ack[6];
+  // get acknowledgement
+  if (read(s, &ack, 6) == -1) {
+    perror("client: receive error");
+    return 1;
+  }
+
+  long convertedLength = htonl(fileLength);
+  // send length
+  if (send(s, &convertedLength, sizeof(convertedLength), 0) < 0 ) {
+    perror("client: send error");
+    return 1;
+  }
+
+  int bytes;
+  while((bytes = fread(buf, sizeof(char), MAXDATASIZE, fp)) > 0){
+    if(send(s, buf, bytes, 0) < 0){
+      perror("client: send error");
+      return 1;
+    }
+  }
+
+  fclose(fp);
   return 0;
 }
 
@@ -244,6 +280,8 @@ int deleteFile(int s, char * buf) {
   }
 
   printf("File name: ");
+  fgets(buf, SMALLSIZE, stdin);
+  buf[SMALLSIZE-1] = '\0';
 
   if(lengthAndName(s, buf) == 1)
     return 1;
@@ -268,6 +306,8 @@ int makeDir(int s, char * buf) {
   }
 
   printf("Directory name: ");
+  fgets(buf, SMALLSIZE, stdin);
+  buf[SMALLSIZE-1] = '\0';
 
   if(lengthAndName(s, buf) == 1)
     return 1;
@@ -296,6 +336,8 @@ int removeDir(int s, char * buf) {
   }
 
   printf("Directory name: ");
+  fgets(buf, SMALLSIZE, stdin);
+  buf[SMALLSIZE-1] = '\0';
 
   if(lengthAndName(s, buf) == 1)
     return 1;
@@ -312,6 +354,8 @@ int changeDir(int s, char * buf) {
   }
 
   printf("Directory name: ");
+  fgets(buf, SMALLSIZE, stdin);
+  buf[SMALLSIZE-1] = '\0';
 
   if(lengthAndName(s, buf) == 1)
     return 1;
