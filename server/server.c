@@ -174,7 +174,7 @@ int upload(int rqst) {
   //get name length
   short nameLength = 0;
   long fileLength = 0;
-  if(read(rqst, &nameLength, sizeof(nameLength)) == -1) {
+  if(read(rqst, &nameLength, sizeof(nameLength)) < 0) {
     perror("server: read error");
     return 1;
   }
@@ -182,7 +182,7 @@ int upload(int rqst) {
 
   //get the name
   char fileName[nameLength+1];
-  if(read(rqst, fileName, nameLength) == -1) {
+  if(read(rqst, fileName, nameLength) < 0) {
     perror("server: read error");
     return 1;
   }
@@ -194,7 +194,7 @@ int upload(int rqst) {
   }
   
   long receiveNum = 0;
-  if (read(rqst, &receiveNum, sizeof(receiveNum)) == -1) {
+  if (read(rqst, &receiveNum, sizeof(receiveNum)) < 0) {
     perror("server: receive error");
     return 1;
   }
@@ -204,7 +204,7 @@ int upload(int rqst) {
   int i;
   char buf[MAXDATASIZE];
   for(i = 0; i < fileLen; i += MAXDATASIZE){
-    if (read(rqst, buf, MAXDATASIZE) == -1) {
+    if (read(rqst, buf, MAXDATASIZE) < 0) {
       perror("server: receive error");
       return 1;
     }
