@@ -228,7 +228,7 @@ int download(int s, char * buf) {
   elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
   elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;   // us to ms
   //throughput
-  printf("%lu bytes transferred in %fms.\n", fileLen*8, elapsedTime);
+  printf("%lu bytes transferred in %fms.\n", fileLen, elapsedTime);
 
   fclose(fp);
   return 0;
@@ -292,7 +292,7 @@ int upload(int s, char * buf) {
   elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
   elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;   // us to ms
   //throughput
-  printf("%lu bytes transferred in %fms.\n", fileLength*8, elapsedTime);
+  printf("%lu bytes transferred in %fms.\n", fileLength, elapsedTime);
 
   fclose(fp);
   return 0;
