@@ -273,6 +273,10 @@ int upload(int s, char * buf) {
     perror("client: send error");
     return 1;
   }
+  struct timeval t1, t2;
+  double elapsedTime; 
+  
+  gettimeofday(&t1, NULL);
 
   int bytes;
   while((bytes = fread(buf, sizeof(char), MAXDATASIZE, fp)) > 0){
@@ -281,6 +285,14 @@ int upload(int s, char * buf) {
       return 1;
     }
   }
+
+  //get ending time
+  gettimeofday(&t2, NULL);
+  // compute and print the elapsed time in millisec
+  elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
+  elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;   // us to ms
+  //throughput
+  printf("%lu bytes transferred in %fms.\n", fileLength*8, elapsedTime);
 
   fclose(fp);
   return 0;
