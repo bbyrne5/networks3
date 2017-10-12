@@ -236,7 +236,11 @@ int delete(int rqst) {
   if(access(dirName, F_OK) != -1){//file does exist
     send(rqst, &success, sizeof(success), 0);
     read(rqst, buf, SMALLSIZE);
-    unlink(dirName);
+    if(strncmp(buf, "Yes", 3) == 0){
+      unlink(dirName);
+    }
+    else
+      return 0;
   }
   else {//file does not exist
     send(rqst, &failure, sizeof(failure), 0);
@@ -256,8 +260,14 @@ int list(int rqst) {
   pclose(p);
   int size = strlen(buff);
   int tmp = htonl((uint32_t)size);
-  send(rqst, &tmp, sizeof(tmp), 0);
-  send(rqst, buff, strlen(buff), 0);
+  if(send(rqst, &tmp, sizeof(tmp), 0) < 0){
+    perror("server: send error:");
+    return 1;
+  }
+  if(send(rqst, buff, strlen(buff), 0) < 0){
+    perror("server: send error:");
+    return 1;
+  }
   return 0;
 }
 
