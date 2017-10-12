@@ -29,6 +29,7 @@ int makeDir(int s, char * buf);
 int removeDir(int s, char * buf);
 int changeDir(int s, char * buf);
 int quit(int s);
+int commands();
 
 int main(int argc, char * argv[] )
 {
@@ -73,6 +74,7 @@ int main(int argc, char * argv[] )
 
   int retv = 0;
   while (1) {
+    commands();
     printf("Operation: ");
     fgets(buf, sizeof(buf), stdin);
     buf[MAXDATASIZE-1] = '\0';
@@ -414,6 +416,19 @@ int changeDir(int s, char * buf) {
   else if(receiveNum > 0)
     printf("Changed current directory\n");
 
+  return 0;
+}
+
+int commands(){
+  printf("Commands Available:\n"
+         "DWLD - Download a file\n"
+         "UPLD - Upload a file\n"
+         "DELF - Delete a file\n"
+         "LIST - List current directory\n"
+         "MDIR - Make a directory\n"
+         "RDIR - Remove a directory\n"
+         "CDIR - Change directory\n"
+         "QUIT - Exit the program\n");
   return 0;
 }
 
