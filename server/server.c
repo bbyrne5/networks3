@@ -15,6 +15,7 @@
 #include <netdb.h>
 #include <sys/time.h>
 #include <time.h>
+#include <libgen.h>
 
 #define MAXDATASIZE 4096
 #define SMALLSIZE 256
@@ -142,8 +143,6 @@ int download(int rqst) {
     fileLength = -1;
   }
 
-  printf("%lu\n", fileLength);
-  
   long convertedLength = htonl(fileLength); 
   // send length
   if (send(rqst, &convertedLength, sizeof(convertedLength), 0) < 0 ) {
@@ -159,7 +158,6 @@ int download(int rqst) {
   char buf[MAXDATASIZE];
   int bytes;
   while((bytes = fread(buf, sizeof(char), MAXDATASIZE, fp)) > 0){
-    printf("%d\n%s\n", bytes, buf);
     if(send(rqst, buf, bytes, 0) < 0){
       perror("server: send error");
       return 1;
@@ -194,13 +192,15 @@ int upload(int rqst) {
   }
   
   long receiveNum = 0;
-  if (read(rqst, &receiveNum, sizeof(receiveNum)) < 0) {
-    perror("server: receive error");
-    return 1;
+  while(!receiveNum) {
+    if (read(rqst, &receiveNum, sizeof(receiveNum)) == -1) {
+      perror("server: receive error");
+      return 1;
+    }
   }
+
   long fileLen = ntohl(receiveNum);
-  
-  FILE * fp = fopen(fileName, "w+");
+  FILE * fp = fopen(basename(fileName), "w+");
   int i;
   char buf[MAXDATASIZE];
   for(i = 0; i < fileLen; i += MAXDATASIZE){
