@@ -101,7 +101,7 @@ int main(int argc, char * argv[] )
 
 int delete(int s, char * name, char * type) {
   short confirm = 0;
-  if (recv(s, &confirm, sizeof(confirm), 0)) {
+  if (recv(s, &confirm, sizeof(confirm), 0) < 0) {
     perror("client: receive error");
     return 1;
   }
@@ -124,14 +124,14 @@ int delete(int s, char * name, char * type) {
     return 0;
   }
 
-  if (recv(s, &confirm, sizeof(confirm), 0)) {
+  if (recv(s, &confirm, sizeof(confirm), 0) < 0) {
     perror("client: receive error");
     return 1;
   }
   confirm = ntohs(confirm); 
 
   if(confirm < 0)
-    printf("Failed to delete directory\n");
+    printf("Failed to delete %s\n", type);
   else
     printf("Deleted %s\n", type); 
 
@@ -296,6 +296,20 @@ int list(int s, char * buf) {
     return 1;
   }
 
+  long receiveNum = 0;
+  if (recv(s, &receiveNum, sizeof(receiveNum), 0) < 0) {
+    perror("client: receive error");
+    return 1;
+  }
+  int size = ntohl(receiveNum);
+
+  if (recv(s, buf, size, 0) < 0) {
+    perror("client: receive error");
+    return 1;
+  }
+
+  printf("%s\n", buf);
+
   return 0;
 }
 
@@ -313,7 +327,7 @@ int makeDir(int s, char * buf) {
     return 1;
 
   short receiveNum = 0;
-  if (recv(s, &receiveNum, sizeof(receiveNum), 0)) {
+  if (recv(s, &receiveNum, sizeof(receiveNum), 0) < 0) {
     perror("client: receive error");
     return 1;
   }
@@ -361,7 +375,7 @@ int changeDir(int s, char * buf) {
     return 1;
 
   short receiveNum = 0;
-  if (recv(s, &receiveNum, sizeof(receiveNum), 0)) {
+  if (recv(s, &receiveNum, sizeof(receiveNum), 0) < 0) {
     perror("client: receive error");
     return 1;
   }

@@ -221,26 +221,37 @@ int upload(int rqst) {
 int delete(int rqst) {
   //get name length
   char buf[256];
-  int valread = read(rqst, buf, SMALLSIZE);
-  buf[valread] = 0;
+  buf[0] = '\0';
+
+  while(buf[0] == '\0')
+    if (read(rqst, buf, SMALLSIZE) < 0)
+      return 1;
+  
   int size = atoi(buf);
+  printf("%d\n", size);
 
   //get the name
   char dirName[size+1];
-  valread = read(rqst, dirName, size);
+  int valread = read(rqst, dirName, size);
   dirName[valread] = 0;
+  printf("%s\n", dirName);
 
   //check for file
   int success = 1;
   int failure = -1;
   if(access(dirName, F_OK) != -1){//file does exist
-    send(rqst, &success, sizeof(success), 0);
-    read(rqst, buf, SMALLSIZE);
+    if(send(rqst, &success, sizeof(success), 0) < 0)
+      return 1;
+
+    if(read(rqst, buf, SMALLSIZE) < 0)
+      return 1;
+
     unlink(dirName);
+    printf("File exists\n");
   }
   else {//file does not exist
     send(rqst, &failure, sizeof(failure), 0);
-    printf("File does not exist");
+    printf("File does not exist\n");
   }
 
   return 0;
@@ -249,8 +260,9 @@ int delete(int rqst) {
 int list(int rqst) {
   FILE* p = popen("ls -la", "r");
   if (!p) return 1;
-  char buff[1024];
-  while (fgets(buff, sizeof(buff), p)) {
+  char buff[MAXDATASIZE];
+  buff[0] = '\0';
+  while (fgets(buff+strlen(buff), sizeof(buff), p)) {
     printf("%s", buff);
   }
   pclose(p);
