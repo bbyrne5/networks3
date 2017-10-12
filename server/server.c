@@ -298,10 +298,10 @@ int makeDir(int rqst) {
   
   struct stat st = {0};
   //check if dir exists and create it if not
-  int success = htonl(1);
-  int failure = htonl(-1);
+  short success = htons(1);
+  short failure = htons(-1);
+  short extraFailure = htons(-2);
 
-  int extraFailure = htonl(-2);
   if (stat(dirName, &st) == -1){
     int create = mkdir(dirName, 0700);
     if (create > 0)
@@ -331,15 +331,15 @@ int removeDir(int rqst) {
 
   struct stat st = {0};
   //check if dir exists and create it if not
-  int success = 1;
-  int failure = -1;
-  int extraFailure = -2;
+  short success = htons(1);
+  short failure = htons(-1);
+  short extraFailure = htons(-2);
   if (stat(dirName, &st) == -1){
     send(rqst, &extraFailure, sizeof(extraFailure), 0);
   } 
   else {
     int create = mkdir(dirName, 0700);
-    if (create > 0)
+    if (create == 0)
       send(rqst, &success, sizeof(success), 0); 
     else 
       send(rqst, &failure, sizeof(failure), 0);
