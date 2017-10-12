@@ -190,12 +190,12 @@ int download(int s, char * buf) {
   if(lengthAndName(s, buf) == 1)
     return 1;
 
-  short receiveNum = 0;
+  long receiveNum = 0;
   if (read(s, &receiveNum, sizeof(receiveNum)) == -1) {
     perror("client: receive error");
     return 1;
   }
-  short fileLen = ntohs(receiveNum);
+  long fileLen = ntohl(receiveNum);
   printf("%d\n", fileLen);
 
   if (fileLen == -1) {
