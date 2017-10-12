@@ -140,15 +140,15 @@ int delete(int s, char * name, char * type) {
 
 char * yesOrNo(char * name) {
 
-  char buf[4];
+  char buf[5];
 
   while (1) {
     printf("Are you sure you want to delete %s? (Yes\\No)\n", name);
-    fgets(buf, 4, stdin);
+    fgets (buf, 5, stdin);
     if (!strncmp(buf,"Yes\n",4))
       return("Yes");
     if (!strncmp(buf,"No\n",3))
-      return("No");   
+      return("No"); 
   }
 }
 

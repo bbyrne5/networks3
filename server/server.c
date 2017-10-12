@@ -219,29 +219,35 @@ int upload(int rqst) {
 }
 
 int delete(int rqst) {
-  //get name length
+
   char buf[256];
   buf[0] = '\0';
 
-  while(buf[0] == '\0')
-    if (read(rqst, buf, SMALLSIZE) < 0)
+  //get name length
+  short size = 0;
+  while(!size)
+    if (read(rqst, &size, sizeof(size)) < 0)
       return 1;
-  
-  int size = atoi(buf);
-  printf("%d\n", size);
 
+  size = ntohs(size);
+  
   //get the name
   char dirName[size+1];
-  int valread = read(rqst, dirName, size);
-  dirName[valread] = 0;
-  printf("%s\n", dirName);
+  dirName[0] = '\0';
+  
+  while(dirName[0] == '\0')
+    if(read(rqst, dirName, size) < 0)
+      return 1;
 
   //check for file
   int success = 1;
   int failure = -1;
   if(access(dirName, F_OK) != -1){//file does exist
     send(rqst, &success, sizeof(success), 0);
-    read(rqst, buf, SMALLSIZE);
+  
+    while(buf[0] == '\0')
+      read(rqst, buf, SMALLSIZE);
+
     if(strncmp(buf, "Yes", 3) == 0){
       unlink(dirName);
     }
@@ -262,7 +268,6 @@ int list(int rqst) {
   char buff[MAXDATASIZE];
   buff[0] = '\0';
   while (fgets(buff+strlen(buff), sizeof(buff), p)) {
-    printf("%s", buff);
   }
   pclose(p);
   int size = strlen(buff);
