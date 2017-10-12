@@ -205,7 +205,12 @@ int download(int s, char * buf) {
 
   FILE * fp = fopen(basename(buf), "w+");
 
+  //get starting time
+  struct timeval t1, t2;
+  double elapsedTime;
+   
   int i;
+  gettimeofday(&t1, NULL);
   for(i = 0; i < fileLen; i += MAXDATASIZE){
     if (read(s, buf, MAXDATASIZE) == -1) {
       perror("client: receive error");
@@ -216,6 +221,14 @@ int download(int s, char * buf) {
     else
       fwrite(buf, sizeof(char), MAXDATASIZE, fp);
   }
+  
+  //get ending time
+  gettimeofday(&t2, NULL);
+  // compute and print the elapsed time in millisec
+  elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
+  elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;   // us to ms
+  //throughput
+  printf("%lu bytes transferred in %fms.\n", fileLen*8, elapsedTime);
 
   fclose(fp);
   return 0;
