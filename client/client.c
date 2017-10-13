@@ -142,13 +142,12 @@ int delete(int s, char * name, char * type) {
 }  
 
 char * yesOrNo(char * name) {
-
-  char buf[5];
+  char buf[MAXDATASIZE];
 
   // loop until receive Yes or No
   while (1) {
     printf("Are you sure you want to delete %s? (Yes\\No)\n", name);
-    fgets (buf, 5, stdin);
+    fgets (buf, MAXDATASIZE, stdin);
     if (!strncmp(buf,"Yes\n",4))
       return("Yes");
     if (!strncmp(buf,"No\n",3))
@@ -279,10 +278,6 @@ int upload(int s, char * buf) {
     perror("client: send error");
     return 1;
   }
-  struct timeval t1, t2;
-  double elapsedTime; 
-  
-  gettimeofday(&t1, NULL);
 
   int bytes;
   while((bytes = fread(buf, sizeof(char), MAXDATASIZE, fp)) > 0){
@@ -292,15 +287,15 @@ int upload(int s, char * buf) {
     }
   }
 
-  //get ending time
-  gettimeofday(&t2, NULL);
-  // compute and print the elapsed time in millisec
-  elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
-  elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;   // us to ms
-  //throughput
-  printf("%d bytes transferred in %f ms: %f Megabytes/sec\n", fileLength, elapsedTime, fileLength/elapsedTime/1000);
-
   fclose(fp);
+
+  if (read(s, buf, MAXDATASIZE) == -1) {
+    perror("client: receive error");
+    return 1;
+  }
+
+  printf("%s", buf);
+  
   return 0;
 }
 

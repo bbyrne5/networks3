@@ -208,6 +208,10 @@ int upload(int rqst) {
   FILE * fp = fopen(basename(fileName), "w+");
   int i;
   char buf[MAXDATASIZE];
+
+  struct timeval t1, t2;
+  double elapsedTime; 
+  gettimeofday(&t1, NULL);
   // read file
   for(i = 0; i < len; i += MAXDATASIZE){
     if (read(rqst, buf, MAXDATASIZE) < 0) {
@@ -218,6 +222,19 @@ int upload(int rqst) {
       fwrite(buf, sizeof(char), len-i, fp);
     else
       fwrite(buf, sizeof(char), MAXDATASIZE, fp);
+  }
+  //get ending time
+  gettimeofday(&t2, NULL);
+  // compute and print the elapsed time in millisec
+  elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
+  elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;   // us to ms
+
+  //throughput  
+  sprintf(buf, "%d bytes transferred in %f ms: %f Megabytes/sec\n", len, elapsedTime, len/elapsedTime/1000);
+
+  if(send(rqst, buf, SMALLSIZE, 0) < 0){
+    perror("server: send error");
+    return 1;
   }
 
   fclose(fp);
